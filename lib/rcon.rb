@@ -1,6 +1,5 @@
 require "rcon/version"
+require "rcon/client"
 
 module Rcon
-  class Error < StandardError; end
-  # Your code goes here...
 end
