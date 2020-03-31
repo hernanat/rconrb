@@ -6,8 +6,8 @@ Gem::Specification.new do |spec|
   spec.authors       = ["Anthony Felix Hernandez"]
   spec.email         = ["ant@antfeedr.com"]
 
-  spec.summary       = %q{An flexibl3 RCON client written in Ruby, based on the Source RCON protocol.}
-  spec.homepage      = "https://github.com/hernanat/rcon"
+  spec.summary       = %q{An flexible RCON client written in Ruby, based on the Source RCON protocol.}
+  spec.homepage      = "https://github.com/hernanat/rconrb"
   spec.required_ruby_version = Gem::Requirement.new(">= 2.6.0")
 
   spec.metadata["allowed_push_host"] = "http://rubygems.org"
