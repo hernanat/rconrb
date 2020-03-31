@@ -1,6 +1,6 @@
 # Rcon
 
-[![hernanat](https://circleci.com/github/hernanat/rconrb/tree/master.svg?style=svg)](https://circleci.com/gh/hernanat/rconrb/tree/master)
+[![hernanat](https://circleci.com/gh/hernanat/rconrb/tree/master.svg?style=svg)](https://circleci.com/gh/hernanat/rconrb/tree/master)
 
 [The Source RCON Protocol](https://developer.valvesoftware.com/wiki/Source_RCON_Protocol) is a protocol
   designed to allow for the remote execution of commands on a server that supports it.
