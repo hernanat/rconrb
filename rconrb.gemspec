@@ -1,14 +1,14 @@
 require_relative 'lib/rcon/version'
 
 Gem::Specification.new do |spec|
-  spec.name          = "rcon"
+  spec.name          = "rconrb"
   spec.version       = Rcon::VERSION
   spec.authors       = ["Anthony Felix Hernandez"]
   spec.email         = ["ant@antfeedr.com"]
 
   spec.summary       = %q{An extendable RCON client written in Ruby, based on the Source RCON protocol.}
   spec.homepage      = "https://github.com/hernanat/rcon"
-  spec.required_ruby_version = Gem::Requirement.new(">= 2.3.0")
+  spec.required_ruby_version = Gem::Requirement.new(">= 2.6.0")
 
   spec.metadata["allowed_push_host"] = "http://rubygems.org"
 
@@ -24,5 +24,6 @@ Gem::Specification.new do |spec|
   spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
+  spec.add_development_dependency "pry"
   spec.add_development_dependency "yard", "~> 0.9.9"
 end

@@ -1,76 +1,114 @@
+require "rcon/packet"
 require "rcon/response"
+require "rcon/socket_wrapper"
 require "socket"
 require "securerandom"
 
 module Rcon
+  # Basic client for executing commands on your server remotely using the Source RCON protocol.
+  # See {https://developer.valvesoftware.com/wiki/Source_RCON_Protocol here} for more details.
+  #
+  # This is intended to be flexible enough to suit the needs of various flavors of RCON (for
+  # example, Minecraft).
+  #
+  # See individual method summaries for more information.
   class Client
-    INTEGER_PACK_DIRECTIVE = "l<".freeze
-    STR_PACK_DIRECTIVE = "a".freeze
-    PACK_DIRECTIVE = "#{INTEGER_PACK_DIRECTIVE}2a*a".freeze
-    ENCODING = Encoding::ASCII
-    TRAILER = "\x00".freeze
-    INT_BYTE_SIZE = 4
-    TRAILER_BYTE_SIZE = 1 
-    TIMEOUT = 10 # 10 seconds
-
-    PACKET_TYPE = {
-      SERVERDATA_AUTH: 3,
-      SERVERDATA_EXECCOMMAND: 2
-    }.freeze
-
-    def initialize(host:, port:, password:, encoding: ENCODING, trailer: TRAILER)
+    # Instantiates an {Client}.
+    #
+    # @param host [String] IP address of the server running RCON
+    # @param port [Integer] RCON port
+    # @param password [String] RCON password
+    # @return [Client]
+    def initialize(host:, port:, password:)
       @host = host
       @port = port
       @password = password
-      @encoding = encoding
-      @trailer = trailer.encode(encoding)
-      @tcp_socket = nil
+      @socket = nil
     end
 
-    def authorize!(packet_id: 0xDEAD1, expect_first_packet_empty: true)
-      build_packet(packet_id, PACKET_TYPE[:SERVERDATA_AUTH], password).then do |auth_packet|
-        @tcp_socket = TCPSocket.open(host, port)
-        tcp_socket.send(auth_packet, 0)
-        read_response_data if expect_first_packet_empty
-        raise "error authenticating" unless Response.from(**read_response_data).success?
-        self
-      end
+    # Opens a TCP socket and authenticates with RCON.
+    #
+    # According to the RCON spec, the server will respond to an authentication request with a
+    # SERVERDATA_RESPONSE_VALUE packet, followed by a SERVERDATA_AUTH_RESPONSE packet by
+    # default.
+    #
+    # However, this is not the case in every implementation (looking at you Minecraft). For the
+    # sake of being flexible, we include a param which allows us to enable / disable this default behavior (see below).
+    #
+    # It is not recommended to call this method more than once before ending the session.
+    #
+    # @param ignore_first_packet [Boolean]
+    # @return [AuthResponse]
+    # @raise [Error::AuthError] if authentication fails
+    def authenticate!(ignore_first_packet: true)
+      packet_id = SecureRandom.rand(1000)
+      auth_packet = Packet.new(packet_id, :SERVERDATA_AUTH, password)
+      @socket = SocketWrapper.new(TCPSocket.open(host, port))
+      socket.deliver_packet(auth_packet)
+      read_packet_from_socket if ignore_first_packet
+
+      read_packet_from_socket.
+        then { |packet| Response.from_packet(packet) }.
+        tap { |response| raise Error::AuthError unless response.success? }
     end
 
-    def end_session!
-      @tcp_socket = tcp_socket.close
-    end
-
+    # Execute the given command.
+    #
+    # Some commands require their responses to be sent across several packets because
+    # they are larger than the maximum (default) RCON packet size of 4096 bytes.
+    #
+    # In order to deal with this, we send an additional "trash" packet immediately
+    # following the initial command packet. SRCDS guarantees that requests are processed
+    # in order, and the subsequent responses are also in order, so we use this fact to
+    # append the packet bodies to the result on the client side until we see the trash
+    # packet id.
+    #
+    # Many commands won't require a segmented response, so we disable this behavior by
+    # default. You can enable it if you'd like using the option describe below.
+    #
+    # Additionally, some implementations of RCON servers (MINECRAFT) cannot handle two 
+    # packets in quick succession, so you may want to wait a short duration (i.e. <= 1 second)
+    # before sending the trash packet. We give the ability to do this using the
+    # wait option described below.
+    #
+    # @param [Hash] opts options for executing the command
+    # @option opts [Boolean] :expect_segmented_response follow segmented response logic described above if true
+    # @option opts [Integer] :wait seconds to wait before sending trash packet (i.e. Minecraft 😡)
+    # @return [CommandResponse]
     def execute(command, opts = {})
       packet_id = SecureRandom.rand(1000)
-      build_packet(packet_id, PACKET_TYPE[:SERVERDATA_EXECCOMMAND], command).then do |packet|
-        send_packet(packet)
-        trash_packet_id = build_and_send_trash_packet(opts) if opts[:expect_segmented_response]
-        build_response(trash_packet_id)
-      end
+      socket.deliver_packet(Packet.new(packet_id, :SERVERDATA_EXECCOMMAND, command))
+      trash_packet_id = build_and_send_trash_packet(opts) if opts[:expect_segmented_response]
+      build_response(trash_packet_id)
+    end
+
+    # Close the TCP socket and end the RCON session.
+    # @return [nil]
+    def end_session!
+      @socket = socket.close
     end
 
     private
 
-    attr_reader :host, :port, :password, :encoding, :trailer, :tcp_socket
+    attr_reader :host, :port, :password, :socket
 
     def build_response(trash_packet_id)
       if trash_packet_id.nil?
-        read_response_data
+        read_packet_from_socket.then { |p| Response.from_packet(p) }
       else
-        build_segmented_response(trash_packet_id, read_response_data)
-      end.then { |result| Response.from(**result) }
+        build_segmented_response(trash_packet_id, read_packet_from_socket)
+      end
     end
 
-    def build_segmented_response(trash_packet_id, base_response)
-      next_segment = read_response_data
-      body = base_response[:body]
+    def build_segmented_response(trash_packet_id, first_segment)
+      next_segment = read_packet_from_socket
+      response = Response.from_packet(first_segment)
       loop do
-        break if next_segment[:id] == trash_packet_id
-        body = "#{body}#{next_segment[:body]}"
-        next_segment = read_response_data
+        break if next_segment.id == trash_packet_id
+        response.body = "#{response.body}#{next_segment.body}"
+        next_segment = read_packet_from_socket
       end
-      base_response.tap { |h| h[:body] = body }
+      response
     end
 
     def build_and_send_trash_packet(opts = {})
@@ -78,50 +116,15 @@ module Rcon
       # blow up if you send successive packets too quickly
       # the work around (currently) is to allow the server some
       # time to catch up. Note that this isn't an exact science.
-      sleep = opts[:sleep]
+      wait = opts[:wait]
       SecureRandom.rand(1000).tap do |packet_id|
-        sleep(sleep) if sleep
-        send_packet(build_packet(packet_id, 0, ""))
+        sleep(wait) if wait
+        socket.deliver_packet(Packet.new(packet_id, 0, ""))
       end
     end
 
-    def send_packet(packet)
-      if socket_ready_to_write?
-        tcp_socket.send(packet, 0)
-      end
+    def read_packet_from_socket
+      Packet.read_from_socket_wrapper(socket)
     end
-
-    def socket_ready_to_write?
-      IO.select(nil, [tcp_socket], nil, TIMEOUT).tap do |io|
-        raise "timed out waiting for socket to be write-ready" if io.nil?
-      end
-    end
-
-    def socket_ready_to_read?
-      IO.select([tcp_socket], nil, nil, TIMEOUT).tap do |io|
-        raise "timed out waiting for socket to be read-ready" if io.nil?
-      end
-    end
-
-    def read_response_data
-      if socket_ready_to_read?
-        size = tcp_socket.recv(INT_BYTE_SIZE).unpack(INTEGER_PACK_DIRECTIVE).first
-        id_and_type_length = 2 * INT_BYTE_SIZE
-        body_length = size - id_and_type_length - (2 * TRAILER_BYTE_SIZE) # ignore trailing null chars
-
-        payload = tcp_socket.recv(size)
-        id, type = payload[0...id_and_type_length].unpack("#{INTEGER_PACK_DIRECTIVE}*")
-        body = payload[id_and_type_length..].unpack("#{STR_PACK_DIRECTIVE}#{body_length}").first
-
-        { id: id, type: type, body: body }
-      end
-    end
-
-    def build_packet(packet_id, packet_type, packet_body)
-      encoded_body = "#{packet_body.encode(encoding)}#{trailer}"
-      [packet_id, packet_type, encoded_body, trailer].pack(PACK_DIRECTIVE).then do |packet|
-        "#{[packet.length].pack(INTEGER_PACK_DIRECTIVE)}#{packet}"
-      end
-    end 
   end
 end
