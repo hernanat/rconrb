@@ -13,7 +13,7 @@ This gem intends to provide a means of executing remote commands via the "vanill
   but also offers some configuration options to allow you to work with the more problematic implementations
   of the protocol (i.e. Minecraft).
 
-See the docs for more information
+See the [docs](https://rubydoc.info/github/hernanat/rconrb) for more information.
 
 ## Installation
 
@@ -91,6 +91,10 @@ client.execute("banlist", expect_segmented_response: true, wait: 0.25)
 After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
 
 To install this gem onto your local machine, run `bundle exec rake install`.
+
+## Documentation
+
+Documentation can be viewed at https://rubydoc.info/github/hernanat/rconrb
 
 ## Contributing
 
