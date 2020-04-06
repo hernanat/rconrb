@@ -70,4 +70,52 @@ RSpec.describe Rcon::Client do
       end
     end
   end
+
+  describe "#execute" do
+    context "without segmented response / wait time" do
+      it "executes the given command and processes the response" do
+        allow(SecureRandom).to receive(:rand).with(1000).and_return(666)
+        server = TCPServer.new("0.0.0.0", 2000)
+        client = Rcon::Client.new(host: "0.0.0.0", port: 2000, password: "foo")
+        mock_existing_server_auth_and_response(
+          server,
+          Rcon::Packet.new(666, :SERVERDATA_AUTH_RESPONSE, "").to_s,
+          Rcon::Packet.new(666, :SERVERDATA_RESPONSE_VALUE, "There are 0 of 10 players online:").to_s
+        )
+        client.authenticate!
+
+        result = client.execute("list")
+
+        expect(result).to be_a(Rcon::CommandResponse)
+        expect(result.id).to eql(666)
+        expect(result.body).to eql("There are 0 of 10 players online:")
+
+        server.close
+      end
+
+      it "executes the given command and processes the response" do
+        allow(SecureRandom).to receive(:rand).with(1000).and_return(666)
+        server = TCPServer.new("0.0.0.0", 2000)
+        client = Rcon::Client.new(host: "0.0.0.0", port: 2000, password: "foo")
+        allow(client).to receive(:build_and_send_trash_packet).and_return(0)
+        mock_existing_server_auth_and_response(
+          server,
+          Rcon::Packet.new(666, :SERVERDATA_AUTH_RESPONSE, "").to_s,
+          [
+            Rcon::Packet.new(666, :SERVERDATA_RESPONSE_VALUE, "There are ").to_s,
+            Rcon::Packet.new(666, :SERVERDATA_RESPONSE_VALUE, "0 of 10 players online:").to_s
+          ]
+        )
+        client.authenticate!
+
+        result = client.execute("list", expect_segmented_response: true)
+
+        expect(result).to be_a(Rcon::CommandResponse)
+        expect(result.id).to eql(666)
+        expect(result.body).to eql("There are 0 of 10 players online:")
+
+        server.close
+      end
+    end
+  end
 end
