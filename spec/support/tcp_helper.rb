@@ -24,6 +24,18 @@ module TcpHelper
     server
   end
 
+  def mock_existing_server_auth_and_response(server, auth, response)
+    seg1, seg2 = response
+    Thread.new do
+      client = server.accept
+      client.write(Rcon::Packet.new(0, :SERVERDATA_RESPONSE_VALUE, "")) # sends empty packet first by default
+      client.write(auth)
+      client.write(seg1)
+      client.write(seg2) if seg2 # for segmented responses
+      client.write(Rcon::Packet.new(0, :SERVERDATA_RESPONSE_VALUE, "trash")) if seg2 # trash packet
+    end
+  end
+
   private
 
   def initial_response_packet_str(id)

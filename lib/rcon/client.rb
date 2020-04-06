@@ -119,7 +119,7 @@ module Rcon
       wait = opts[:wait]
       SecureRandom.rand(1000).tap do |packet_id|
         sleep(wait) if wait
-        socket.deliver_packet(Packet.new(packet_id, 0, ""))
+        socket.deliver_packet(Packet.new(packet_id, :SERVERDATA_RESPONSE_VALUE, ""))
       end
     end
 
