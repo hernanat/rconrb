@@ -1,13 +1,17 @@
-version: 2
+version: 2.1
+
 jobs:
-  build:
-    parallelism: 1
+  test:
+    parameters:
+      ruby-version:
+        type: string
     docker:
-      - image: circleci/ruby:2.6.0-stretch
+      - image: cimg/ruby:<< parameters.ruby-version >>
         environment:
           BUNDLE_JOBS: 1
           BUNDLE_RETRY: 3
           BUNDLE_PATH: vendor/bundle
+
     steps:
       - checkout
 
@@ -23,3 +27,11 @@ jobs:
                               --out test_results/rspec.xml \
                               --format progress \
                               $(circleci tests glob "spec/**/*_spec.rb" | circleci tests split --split-by=timings)
+
+workflows:
+  build_and_test:
+    jobs:
+      - test:
+          matrix:
+            parameters:
+              ruby-version: ["2.6", "2.7", "3.0"]
