@@ -6,7 +6,7 @@ Gem::Specification.new do |spec|
   spec.authors       = ["Anthony Felix Hernandez"]
   spec.email         = ["ant@antfeedr.com"]
 
-  spec.summary       = %q{An flexible RCON client written in Ruby, based on the Source RCON protocol.}
+  spec.summary       = %q{A flexible RCON client written in Ruby, based on the Source RCON protocol.}
   spec.homepage      = "https://github.com/hernanat/rconrb"
   spec.required_ruby_version = Gem::Requirement.new(">= 2.6.0")
 
@@ -26,5 +26,5 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   spec.add_development_dependency "pry"
-  spec.add_development_dependency "yard", "~> 0.9.9"
+  spec.add_development_dependency "yard", "~> 0.9"
 end
