@@ -22,8 +22,8 @@ RSpec.describe Rcon::Packet do
       wrapper = Rcon::SocketWrapper.new(TCPSocket.open("0.0.0.0", 2000))
 
       expect { Rcon::Packet.read_from_socket_wrapper(wrapper) }.to raise_error(
-          an_instance_of(Rcon::Error::InvalidResponsePacketTypeCodeError).and having_attributes(type_code: 5)
-        )
+        an_instance_of(Rcon::Error::InvalidResponsePacketTypeCodeError).and having_attributes(type_code: 5)
+      )
 
       server.close
     end
@@ -37,6 +37,20 @@ RSpec.describe Rcon::Packet do
       expect { Rcon::Packet.read_from_socket_wrapper(wrapper) }.to raise_error(Rcon::Error::SocketReadTimeoutError)
 
       server.close
+    end
+
+    it "raises an `Rcon::Error::ServerClosedSocketError` if the socket is closed by server" do
+      thread = Thread.new do
+        server = TCPServer.new("0.0.0.0", 2001)
+        loop do
+          client = server.accept
+          client.close
+        end
+      end
+
+      wrapper = Rcon::SocketWrapper.new(TCPSocket.open("0.0.0.0", 2001))
+
+      expect { Rcon::Packet.read_from_socket_wrapper(wrapper) }.to raise_error(Rcon::Error::ServerClosedSocketError)
     end
   end
 
