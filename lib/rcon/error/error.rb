@@ -50,6 +50,14 @@ module Rcon
       end
     end
 
+    # used for communicating that the server closed the connection
+    class ServerClosedSocketError < StandardError
+      # @return [String]
+      def message
+        "the server closed the connection. Do you have too many concurrent connections open?"
+      end
+    end
+
     # used for communicating that we timed out trying to read from the socket
     class SocketReadTimeoutError < StandardError
       # @return [String]

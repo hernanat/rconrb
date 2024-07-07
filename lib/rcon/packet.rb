@@ -41,10 +41,16 @@ module Rcon
     def self.read_from_socket_wrapper(socket_wrapper)
       if socket_wrapper.ready_to_read?
         size = socket_wrapper.recv(INT_BYTE_SIZE).unpack(INTEGER_PACK_DIRECTIVE).first
+        if size.empty?
+          raise ServerClosedSocketError
+        end
         id_and_type_length = 2 * INT_BYTE_SIZE
         body_length = size - id_and_type_length - (2 * TRAILER_BYTE_SIZE) # ignore trailing nulls
 
         payload = socket_wrapper.recv(size)
+        if payload.empty?
+          raise ServerClosedSocketError
+        end
         id, type_int = payload[0...id_and_type_length].unpack("#{INTEGER_PACK_DIRECTIVE}*")
         body = payload[id_and_type_length..].unpack("#{STR_PACK_DIRECTIVE}#{body_length}").first
         type = RESPONSE_PACKET_TYPE.key(type_int) || raise(Error::InvalidResponsePacketTypeCodeError.new(type_int))
