@@ -40,7 +40,7 @@ module Rcon
     # @raise [Error::SocketReadTimeoutError] if timeout occurs while waiting to read from socket
     def self.read_from_socket_wrapper(socket_wrapper)
       if socket_wrapper.ready_to_read?
-        size = socket_wrapper.recv(INT_BYTE_SIZE).unpack(INTEGER_PACK_DIRECTIVE).first
+        size = socket_wrapper.recv(INT_BYTE_SIZE)&.unpack(INTEGER_PACK_DIRECTIVE)&.first
         if size.nil?
           raise Error::ServerClosedSocketError
         end
