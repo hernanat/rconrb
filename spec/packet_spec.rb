@@ -47,6 +47,7 @@ RSpec.describe Rcon::Packet do
           client.close
         end
       end
+      sleep 2
 
       wrapper = Rcon::SocketWrapper.new(TCPSocket.open("0.0.0.0", 2001))
 
