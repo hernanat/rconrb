@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rcon
   # wraps the response we receive from the server. It might not be obvious at
   # first why have this additional datastructure. There are two main motivations.

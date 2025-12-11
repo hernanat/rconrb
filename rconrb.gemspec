@@ -8,7 +8,7 @@ Gem::Specification.new do |spec|
 
   spec.summary       = %q{A flexible RCON client written in Ruby, based on the Source RCON protocol.}
   spec.homepage      = "https://github.com/hernanat/rconrb"
-  spec.required_ruby_version = Gem::Requirement.new(">= 2.6.0")
+  spec.required_ruby_version = Gem::Requirement.new(">= 3.2.0")
 
   spec.metadata["allowed_push_host"] = "https://rubygems.org"
 

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rcon
   # Data structure representing packets sent to / received from RCON server.
   class Packet

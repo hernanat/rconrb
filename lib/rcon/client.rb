@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rcon/packet"
 require "rcon/response"
 require "rcon/socket_wrapper"

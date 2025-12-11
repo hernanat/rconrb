@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rcon/version"
 require "rcon/error/error"
 require "rcon/client"
